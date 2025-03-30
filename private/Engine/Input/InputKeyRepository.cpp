@@ -8,7 +8,7 @@ namespace engine::input {
     }
 
     std::string InputKeyRepository::GetKey(InputKeyHandle handle) {
-        return m_KeyList[handle];
+        return m_KeyList.at(handle);
     }
 
     bool InputKeyRepository::HasKey(InputKeyHandle handle) {

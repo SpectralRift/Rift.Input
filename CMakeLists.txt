@@ -6,7 +6,9 @@ add_library(
         STATIC
         private/Engine/Input/InputModule.cpp
         private/Engine/Input/InputManager.cpp
+        private/Engine/Input/InputSystem.cpp
         private/Engine/Input/InputKeyRepository.cpp
+        private/Engine/Input/InputAxisRepository.cpp
 )
 
 target_include_directories(

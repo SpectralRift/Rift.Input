@@ -15,7 +15,7 @@ namespace engine::input {
     struct IInputDevice;
 
     struct InputManager {
-        using InputEventDelegate = std::function<void(const InputEvent &)>;
+        using InputEventDelegate = std::function<bool(const InputEvent &)>;
 
         InputManager();
 
@@ -31,6 +31,7 @@ namespace engine::input {
         // make sure that certain related to pushing APIs are not exposed to everyone. we wouldn't want anyone to push fake input data, would we?
         void PushKeyStateChange(InputKeyHandle key, bool newKeyState);
         void PushInputChar(uint16_t ch);
+        void PushAxisChange(InputAxisHandle axis, float value);
         void PushMousePosition(core::math::Vector2 position);
 
         // Touchscreen API
@@ -45,7 +46,7 @@ namespace engine::input {
 
         void UnregisterDevice(IInputDevice *device);
 
-        void AddInputListener(InputEventDelegate listener);
+        void AddInputListener(InputEventDelegate listener, bool hasHighPriority = false);
 
         void RemoveInputListener(InputEventDelegate listener);
 
@@ -57,6 +58,7 @@ namespace engine::input {
         void ProcessTask();
 
         std::unique_ptr<core::runtime::IMutex> mtx_InputProc;
+        std::unique_ptr<core::runtime::IMutex> mtx_DeviceProc;
 
         std::vector<IInputDevice *> m_DeviceList;
         std::vector<InputEvent> m_Events;

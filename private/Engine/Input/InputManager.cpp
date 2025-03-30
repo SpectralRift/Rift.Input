@@ -11,15 +11,20 @@
 
 namespace engine::input {
     static InputManager *g_InputManager;
-    static engine::runtime::Logger g_LoggerInputManager("InputManager");
+    static runtime::Logger g_LoggerInputManager("InputManager");
 
     InputManager::InputManager() : b_IsInit{false}, m_Thread{nullptr} {
         mtx_InputProc = core::Platform::CreateMutex();
+        mtx_DeviceProc = core::Platform::CreateMutex();
     }
 
     InputManager::~InputManager() {
         if (mtx_InputProc) {
             mtx_InputProc = nullptr;
+        }
+
+        if (mtx_DeviceProc) {
+            mtx_DeviceProc = nullptr;
         }
     }
 
@@ -99,8 +104,10 @@ namespace engine::input {
                         break;
                     case INPUT_EVENT_TYPE_TOUCH_DOWN:
                     case INPUT_EVENT_TYPE_TOUCH_MOVE:
-                        if ((core::Platform::GetVirtualKeyboard()->GetInputIgnoreTarget() & INPUT_IGNORE_TARGET_TOUCH) > 0) {
-                            if (core::Platform::GetVirtualKeyboard()->IsVisible() && core::Platform::GetVirtualKeyboard()->IsPointOnKeyboard(ev.Position)) {
+                        if ((core::Platform::GetVirtualKeyboard()->GetInputIgnoreTarget() & INPUT_IGNORE_TARGET_TOUCH) >
+                            0) {
+                            if (core::Platform::GetVirtualKeyboard()->IsVisible() &&
+                                core::Platform::GetVirtualKeyboard()->IsPointOnKeyboard(ev.Position)) {
 #ifdef INPUT_MANAGER_DEBUG_EVENTS
                                 g_LoggerInputManager.Log(engine::runtime::LOG_LEVEL_WARNING,
                                                          "Virtual keyboard is shown on screen; ignoring touch events.");
@@ -116,7 +123,10 @@ namespace engine::input {
             }
 
             for (const auto &inputDelegate: m_InputDelegates) {
-                inputDelegate(ev);
+                if(inputDelegate(ev)) {
+                    g_LoggerInputManager.Log(engine::runtime::LOG_LEVEL_WARNING, "Input delegate handled the event; dismissing event.");
+                    break;
+                }
             }
         }
 
@@ -131,13 +141,13 @@ namespace engine::input {
     void InputManager::ProcessTask() {
         while (m_Thread->IsRunning() || b_IsInit) {
             // poll device inputs
-            mtx_InputProc->Lock();
+            mtx_DeviceProc->Lock();
 
             for (auto &d: m_DeviceList) {
                 d->Poll();
             }
 
-            mtx_InputProc->Unlock();
+            mtx_DeviceProc->Unlock();
         }
     }
 
@@ -181,6 +191,19 @@ namespace engine::input {
     void InputManager::PushInputChar(uint16_t ch) {
         InputEvent event{INPUT_EVENT_TYPE_INPUT_CHAR};
         event.UInputChar = ch;
+
+        PushEvent(event);
+    }
+
+    void InputManager::PushAxisChange(InputAxisHandle axis, float value) {
+        InputEvent event{INPUT_EVENT_TYPE_AXIS_CHANGE};
+
+        event.Axis = axis;
+        event.AxisValue = value;
+
+#ifdef INPUT_MANAGER_DEBUG_EVENTS
+        g_LoggerInputManager.Log(engine::runtime::LOG_LEVEL_DEBUG, "Pushing axis change event for axis 0x%08x: %f", axis, value);
+#endif
 
         PushEvent(event);
     }
@@ -262,9 +285,15 @@ namespace engine::input {
         PushEvent(event);
     }
 
-    void InputManager::AddInputListener(InputEventDelegate listener) {
+    void InputManager::AddInputListener(InputEventDelegate listener, bool hasHighPriority) {
         mtx_InputProc->Lock();
-        m_InputDelegates.push_back(std::move(listener));
+
+        if(hasHighPriority) {
+            m_InputDelegates.insert(m_InputDelegates.begin(), std::move(listener));
+        } else {
+            m_InputDelegates.push_back(std::move(listener));
+        }
+
         mtx_InputProc->Unlock();
     }
 
