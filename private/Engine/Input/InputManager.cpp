@@ -64,11 +64,21 @@ namespace engine::input {
     }
 
     void InputManager::Shutdown() {
+        if(!b_IsInit) return;
+
         mtx_InputProc->Lock();
 
         b_IsInit = false;
 
         g_LoggerInputManager.Log(engine::runtime::LOG_LEVEL_DEBUG, "Shutting down the input manager...");
+
+        if(m_Thread) {
+            g_LoggerInputManager.Log(engine::runtime::LOG_LEVEL_DEBUG, "Shutting down the input thread...");
+
+            m_Thread->Stop();
+            m_Thread->Join();
+            m_Thread = nullptr;
+        }
 
         g_LoggerInputManager.Log(engine::runtime::LOG_LEVEL_DEBUG, "Destroying device resources...");
         for (auto device: m_DeviceList) {
@@ -143,7 +153,7 @@ namespace engine::input {
             // poll device inputs
             mtx_DeviceProc->Lock();
 
-            for (auto &d: m_DeviceList) {
+            for (auto d: m_DeviceList) {
                 d->Poll();
             }
 
@@ -152,19 +162,18 @@ namespace engine::input {
     }
 
     void InputManager::RegisterDevice(IInputDevice *device) {
-        mtx_InputProc->Lock();
+        mtx_DeviceProc->Lock();
 
         g_LoggerInputManager.Log(engine::runtime::LOG_LEVEL_INFO, "Registering device '%s'", device->GetName().c_str());
         m_DeviceList.emplace_back(device);
 
-        mtx_InputProc->Unlock();
+        mtx_DeviceProc->Unlock();
     }
 
     void InputManager::UnregisterDevice(IInputDevice *device) {
-        mtx_InputProc->Lock();
+        mtx_DeviceProc->Lock();
 
-        g_LoggerInputManager.Log(engine::runtime::LOG_LEVEL_DEBUG, "Unregistering device '%s' type %i",
-                                 device->GetName().c_str());
+        g_LoggerInputManager.Log(engine::runtime::LOG_LEVEL_DEBUG, "Unregistering device '%s'", device->GetName().c_str());
 
         // look for device in our list
         auto it = std::find(m_DeviceList.begin(), m_DeviceList.end(), device);
@@ -179,7 +188,7 @@ namespace engine::input {
                                      "Device '%s' was not registered in the first place!", device->GetName().c_str());
         }
 
-        mtx_InputProc->Unlock();
+        mtx_DeviceProc->Unlock();
     }
 
     void InputManager::PushEvent(InputEvent event) {
