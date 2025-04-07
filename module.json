@@ -1,0 +1,18 @@
+{
+  "module": {
+    "name": "Rift.Input",
+    "category": "Core Input",
+    "version": "0.0.1",
+    "author": "r0neko",
+    "description": "Core Input Module",
+    "homepage": "https://github.com/SpectralRift/Rift.Input",
+    "type": "monolithic",
+    "cmakeProject": "Rift_Input"
+  },
+  "dependencies": [
+    "Rift.Core.Runtime"
+  ],
+  "supportedTargets": [
+    "all"
+  ]
+}

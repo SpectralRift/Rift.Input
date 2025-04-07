@@ -17,4 +17,6 @@ target_include_directories(
         PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/private"
 )
 
-target_link_libraries(Rift_Input RiftEngine_Core_Runtime)
+rift_resolve_module_libs("Rift.Core.Runtime" RIFT_INPUT_DEPS)
+
+target_link_libraries(Rift_Input ${RIFT_INPUT_DEPS})
